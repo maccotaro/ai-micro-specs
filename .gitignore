@@ -1,0 +1,56 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+.vscode-test
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+*.log
+
+# Drawing tool temporary files
+~*.drawio.dtmp
+~*.drawio.bkp
+
+# PlantUML temporary files
+*.png~
+*.svg~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
