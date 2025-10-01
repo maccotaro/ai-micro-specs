@@ -5,7 +5,7 @@
 ## 📄 ドキュメント
 
 - `CHANGELOG.md` - 変更履歴まとめ
-- `2025-09-02-hierarchy-id-fix.md` - 階層構造ID生成修正（既存）
+- `2025-10-01-hierarchy-id-fix.md` - 階層構造ID生成修正（既存）
 
 ## 📝 変更記録の追加方法
 
