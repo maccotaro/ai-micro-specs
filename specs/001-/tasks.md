@@ -47,14 +47,14 @@
 
 ## Phase 3.1: セットアップ
 
-- [ ] **T001** [P] ファイルサイズ制約チェックスクリプト作成
+- [x] **T001** [P] ファイルサイズ制約チェックスクリプト作成
   - ファイル: `.specify/scripts/bash/check-file-size.sh`
   - 内容: すべての新規・変更ファイルが500行以下であることを検証
   - 対象: `ai-micro-api-admin/app/**/*.py`, `ai-micro-front-admin/src/**/*.{ts,tsx}`
   - 実行タイミング: 各実装タスク完了後
   - 出力: 500行超過ファイルのリストとエラーメッセージ
 
-- [ ] **T002** [P] init.sqlにcollectionsテーブル定義を追加
+- [x] **T002** [P] init.sqlにcollectionsテーブル定義を追加
   - ファイル: `ai-micro-postgres/db/init.sql`
   - 内容: collectionsテーブル定義を追加（data-model.mdの158-200行を参照）
     * CREATE TABLE collections (id, knowledge_base_id, name, description, is_default, timestamps)
@@ -66,19 +66,19 @@
     * CREATE INDEX idx_documents_collection_id
   - 検証: `docker exec postgres psql -U postgres -d admindb -c "\d collections"`
 
-- [ ] **T003** [P] Collectionモデル作成 (Backend)
+- [x] **T003** [P] Collectionモデル作成 (Backend)
   - ファイル: `ai-micro-api-admin/app/models/collection.py`
   - 内容: SQLAlchemyモデル (id, knowledge_base_id, name, description, is_default, timestamps)
 
-- [ ] **T004** [P] Collection Pydanticスキーマ作成 (Backend)
+- [x] **T004** [P] Collection Pydanticスキーマ作成 (Backend)
   - ファイル: `ai-micro-api-admin/app/schemas/collection.py`
   - 内容: CollectionCreate, CollectionUpdate, CollectionResponse
 
-- [ ] **T005** [P] Collection型定義作成 (Frontend)
+- [x] **T005** [P] Collection型定義作成 (Frontend)
   - ファイル: `ai-micro-front-admin/src/types/collection.ts`
   - 内容: TypeScript型定義 (Collection, CollectionCreate, CollectionUpdate)
 
-- [ ] **T006** データベース再作成
+- [x] **T006** データベース再作成
   - コマンド: `cd ai-micro-postgres && docker compose down && docker compose up -d`
   - 検証: collectionsテーブルが作成されていることを確認
 
