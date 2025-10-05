@@ -1,0 +1,549 @@
+openapi: 3.0.3
+info:
+  title: Collections API
+  description: ナレッジベースのコレクション管理API
+  version: 1.0.0
+  contact:
+    name: AI Micro Services Team
+
+servers:
+  - url: http://localhost:8003
+    description: 開発環境 (Admin API)
+
+tags:
+  - name: collections
+    description: コレクション管理エンドポイント
+  - name: documents
+    description: ドキュメント管理エンドポイント (コレクション対応)
+
+paths:
+  /api/collections:
+    get:
+      tags:
+        - collections
+      summary: コレクション一覧取得
+      description: 指定されたナレッジベース内のすべてのコレクションを取得
+      operationId: listCollections
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: knowledge_base_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ナレッジベースID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CollectionSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - collections
+      summary: コレクション作成
+      description: 新しいコレクションを作成
+      operationId: createCollection
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectionCreate'
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                duplicate_name:
+                  summary: 重複したコレクション名
+                  value:
+                    detail: "Collection name 'Products' already exists in this knowledge base"
+
+  /api/collections/{id}:
+    get:
+      tags:
+        - collections
+      summary: コレクション詳細取得
+      description: コレクション詳細とドキュメント一覧を取得
+      operationId: getCollection
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: コレクションID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDetails'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - collections
+      summary: コレクション更新
+      description: コレクション名または説明を更新
+      operationId: updateCollection
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: コレクションID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectionUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                default_collection_rename:
+                  summary: デフォルトコレクションの名前変更
+                  value:
+                    detail: "Cannot rename default collection"
+                duplicate_name:
+                  summary: 重複したコレクション名
+                  value:
+                    detail: "Collection name already exists"
+
+    delete:
+      tags:
+        - collections
+      summary: コレクション削除
+      description: コレクションを削除 (ドキュメントの扱いはactionパラメータで指定)
+      operationId: deleteCollection
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: コレクションID
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [delete, move_to_default]
+          description: ドキュメントの扱い (delete=削除, move_to_default=デフォルトに移動)
+      responses:
+        '204':
+          description: 削除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                default_collection_delete:
+                  summary: デフォルトコレクションの削除
+                  value:
+                    detail: "Cannot delete default collection"
+                missing_action:
+                  summary: actionパラメータ不足
+                  value:
+                    detail: "action parameter is required"
+
+  /api/documents/{id}/move:
+    put:
+      tags:
+        - documents
+      summary: ドキュメント移動
+      description: ドキュメントを別のコレクションに移動
+      operationId: moveDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ドキュメントID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - collection_id
+              properties:
+                collection_id:
+                  type: string
+                  format: uuid
+                  description: 移動先のコレクションID
+      responses:
+        '200':
+          description: 移動成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /api/search:
+    get:
+      tags:
+        - documents
+      summary: ドキュメント検索
+      description: ドキュメント検索 (コレクション絞り込みオプション)
+      operationId: searchDocuments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: 検索クエリ
+        - name: knowledge_base_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ナレッジベースID
+        - name: collection_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: コレクション絞り込み (オプショナル)
+      responses:
+        '200':
+          description: 検索成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CollectionCreate:
+      type: object
+      required:
+        - knowledge_base_id
+        - name
+      properties:
+        knowledge_base_id:
+          type: string
+          format: uuid
+          description: 親ナレッジベースID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: コレクション名
+        description:
+          type: string
+          maxLength: 10000
+          description: コレクションの説明 (オプショナル)
+
+    CollectionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: コレクション名 (オプショナル)
+        description:
+          type: string
+          maxLength: 10000
+          description: コレクションの説明 (オプショナル)
+
+    CollectionSummary:
+      type: object
+      required:
+        - id
+        - knowledge_base_id
+        - name
+        - is_default
+        - document_count
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        knowledge_base_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+        document_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CollectionResponse:
+      type: object
+      required:
+        - id
+        - knowledge_base_id
+        - name
+        - is_default
+        - document_count
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        knowledge_base_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+        document_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CollectionDetails:
+      allOf:
+        - $ref: '#/components/schemas/CollectionResponse'
+        - type: object
+          required:
+            - documents
+          properties:
+            documents:
+              type: array
+              items:
+                $ref: '#/components/schemas/DocumentSummary'
+
+    DocumentSummary:
+      type: object
+      required:
+        - id
+        - title
+        - file_name
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        file_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    DocumentResponse:
+      type: object
+      required:
+        - id
+        - collection_id
+        - title
+        - file_name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        collection_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        file_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SearchResult:
+      type: object
+      required:
+        - id
+        - title
+        - collection_id
+        - collection_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        collection_id:
+          type: string
+          format: uuid
+        collection_name:
+          type: string
+        snippet:
+          type: string
+          description: 検索結果のスニペット (オプショナル)
+
+    ValidationError:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: エラーメッセージ
+
+  responses:
+    Unauthorized:
+      description: 認証エラー
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+                example: "Unauthorized"
+
+    Forbidden:
+      description: 権限不足
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+                example: "Forbidden"
+
+    NotFound:
+      description: リソースが見つからない
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+                example: "Collection not found"
