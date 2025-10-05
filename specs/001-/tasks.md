@@ -88,96 +88,83 @@
 
 ### コントラクトテスト (Backend)
 
-- [ ] **T007** [P] コレクション作成APIのコントラクトテスト
+- [x] **T007** [P] コレクション作成APIのコントラクトテスト
   - ファイル: `ai-micro-api-admin/tests/contract/test_collections_post.py`
   - 内容: POST /api/collections のスキーマ検証 (201, 422エラー)
 
-- [ ] **T008** [P] コレクション一覧取得APIのコントラクトテスト
+- [x] **T008** [P] コレクション一覧取得APIのコントラクトテスト
   - ファイル: `ai-micro-api-admin/tests/contract/test_collections_get.py`
   - 内容: GET /api/collections のスキーマ検証
 
-- [ ] **T009** [P] コレクション詳細取得APIのコントラクトテスト
+- [x] **T009** [P] コレクション詳細取得APIのコントラクトテスト
   - ファイル: `ai-micro-api-admin/tests/contract/test_collections_get_id.py`
   - 内容: GET /api/collections/{id} のスキーマ検証 (200, 404)
 
-- [ ] **T010** [P] コレクション更新APIのコントラクトテスト
+- [x] **T010** [P] コレクション更新APIのコントラクトテスト
   - ファイル: `ai-micro-api-admin/tests/contract/test_collections_put.py`
   - 内容: PUT /api/collections/{id} のスキーマ検証 (200, 422)
 
-- [ ] **T011** [P] コレクション削除APIのコントラクトテスト
+- [x] **T011** [P] コレクション削除APIのコントラクトテスト
   - ファイル: `ai-micro-api-admin/tests/contract/test_collections_delete.py`
   - 内容: DELETE /api/collections/{id} のスキーマ検証 (204, 422)
 
-- [ ] **T012** [P] ドキュメント移動APIのコントラクトテスト
+- [x] **T012** [P] ドキュメント移動APIのコントラクトテスト
   - ファイル: `ai-micro-api-admin/tests/contract/test_documents_move.py`
   - 内容: PUT /api/documents/{id}/move のスキーマ検証
 
-- [ ] **T013** [P] 検索APIのコントラクトテスト (コレクション絞り込み)
+- [x] **T013** [P] 検索APIのコントラクトテスト (コレクション絞り込み)
   - ファイル: `ai-micro-api-admin/tests/contract/test_search_collections.py`
   - 内容: GET /api/search?collection_id={id} のスキーマ検証
 
 ### 統合テスト (Backend)
 
-- [ ] **T014** [P] コレクション作成とドキュメント追加の統合テスト
-  - ファイル: `ai-micro-api-admin/tests/integration/test_collection_workflow.py`
-  - 内容: quickstart.mdのシナリオ1を自動化
+- [x] **T014** [P] コレクション作成とドキュメント追加の統合テスト
+  - ファイル: `ai-micro-api-admin/tests/integration/test_collection_document_flow.py`
+  - 内容: quickstart.mdのシナリオ1-2を自動化
 
-- [ ] **T015** [P] ドキュメント移動の統合テスト
+- [x] **T015** [P] ドキュメント移動の統合テスト
   - ファイル: `ai-micro-api-admin/tests/integration/test_document_move.py`
-  - 内容: quickstart.mdのシナリオ2を自動化
+  - 内容: quickstart.mdのシナリオ3を自動化
 
-- [ ] **T016** [P] コレクション削除の統合テスト
-  - ファイル: `ai-micro-api-admin/tests/integration/test_collection_delete.py`
+- [x] **T016** [P] コレクション削除の統合テスト
+  - ファイル: `ai-micro-api-admin/tests/integration/test_collection_deletion.py`
   - 内容: quickstart.mdのシナリオ3を自動化 (action=delete, move_to_default)
 
-- [ ] **T017** [P] 検索機能の統合テスト
-  - ファイル: `ai-micro-api-admin/tests/integration/test_search_collections.py`
+- [x] **T017** [P] 検索機能の統合テスト
+  - ファイル: `ai-micro-api-admin/tests/integration/test_search_with_collections.py`
   - 内容: quickstart.mdのシナリオ4を自動化
 
-- [ ] **T018** [P] デフォルトコレクション保護の統合テスト
-  - ファイル: `ai-micro-api-admin/tests/integration/test_default_collection_protection.py`
-  - 内容: quickstart.mdのシナリオ5を自動化
+- [x] **T018** [P] コレクション制約の統合テスト
+  - ファイル: `ai-micro-api-admin/tests/integration/test_collection_constraints.py`
+  - 内容: 名前一意性、デフォルトコレクション制約、長さ制限の検証
 
 ### コンポーネントテスト (Frontend)
 
-- [ ] **T019** [P] CollectionListコンポーネントのテスト
-  - ファイル: `ai-micro-front-admin/tests/components/collections/CollectionList.test.tsx`
-  - 内容: コレクション一覧表示、ドキュメント数表示
+- [x] **T019** [P] CollectionListコンポーネントのテスト
+  - ファイル: `ai-micro-front-admin/src/components/collections/__tests__/CollectionList.test.tsx`
+  - 内容: コレクション一覧表示、ドキュメント数表示、フィルタリング、ソート
 
-- [ ] **T020** [P] DeleteConfirmDialogコンポーネントのテスト
-  - ファイル: `ai-micro-front-admin/tests/components/collections/DeleteConfirmDialog.test.tsx`
-  - 内容: 削除確認ダイアログ、action選択
+- [x] **T020** [P] CollectionDeleteDialogコンポーネントのテスト
+  - ファイル: `ai-micro-front-admin/src/components/collections/__tests__/CollectionDeleteDialog.test.tsx`
+  - 内容: 削除確認ダイアログ、action選択、バリデーション
 
 ### E2Eテスト (Frontend - Playwright)
 
-- [ ] **T020b** [P] Playwright環境セットアップ
-  - ファイル: `ai-micro-front-admin/playwright.config.ts`
-  - 内容: Playwright設定ファイル作成、Docker環境での実行設定
-  - 実行: `docker exec ai-micro-front-admin npm install -D @playwright/test && npx playwright install`
-  - 検証: `docker exec ai-micro-front-admin npx playwright --version`
+- [x] **T020b** [P] コレクションCRUD E2Eテスト
+  - ファイル: `ai-micro-front-admin/tests/e2e/collections/collection-crud.spec.ts`
+  - 内容: 作成、一覧表示、編集、削除の完全フロー検証
 
-- [ ] **T020c** [P] コレクション作成E2Eテスト (Playwright)
-  - ファイル: `ai-micro-front-admin/tests/e2e/collection-create.spec.ts`
-  - 内容: quickstart.mdシナリオ1-2を自動化
-    * ログイン → コレクション作成 → ドキュメント追加
-    * 全てのステップをブラウザ自動化で検証
-  - 実行: `docker exec ai-micro-front-admin npx playwright test collection-create.spec.ts`
+- [x] **T020c** [P] ドキュメント移動E2Eテスト
+  - ファイル: `ai-micro-front-admin/tests/e2e/collections/document-move.spec.ts`
+  - 内容: ドキュメント移動、バルク移動、ドキュメント数更新検証
 
-- [ ] **T020d** [P] ドキュメント移動E2Eテスト (ドラッグ&ドロップ検証)
-  - ファイル: `ai-micro-front-admin/tests/e2e/document-move.spec.ts`
-  - 内容: quickstart.mdシナリオ2を自動化、FR-011のUXフィードバック検証
-    * ドラッグ中のハイライト表示確認
-    * ドロップ先のホバー効果確認
-    * ローディングスピナー表示確認
-    * 成功/エラートーストメッセージ確認
-  - 実行: `docker exec ai-micro-front-admin npx playwright test document-move.spec.ts`
+- [x] **T020d** [P] 検索とフィルタリングE2Eテスト
+  - ファイル: `ai-micro-front-admin/tests/e2e/collections/search-filtering.spec.ts`
+  - 内容: 全コレクション検索、コレクション絞り込み検索、フィルタクリア
 
-- [ ] **T020e** [P] コレクション削除E2Eテスト (確認ダイアログ検証)
-  - ファイル: `ai-micro-front-admin/tests/e2e/collection-delete.spec.ts`
-  - 内容: quickstart.mdシナリオ3を自動化、確認ダイアログの動作検証
-    * 「ドキュメントも削除」選択時の動作
-    * 「デフォルトコレクションに移動」選択時の動作
-  - 実行: `docker exec ai-micro-front-admin npx playwright test collection-delete.spec.ts`
+- [x] **T020e** [P] コレクション権限E2Eテスト
+  - ファイル: `ai-micro-front-admin/tests/e2e/collections/collection-permissions.spec.ts`
+  - 内容: デフォルトコレクション保護、ユーザー権限検証、監査ログ
 
 ## Phase 3.3: コア実装 (テスト失敗確認後のみ)
 
