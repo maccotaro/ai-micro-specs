@@ -82,6 +82,27 @@ When creating this spec from a user prompt:
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+### Service Integration *(include for microservices features - optional)*
+*Refer to `.specify/memory/project-context-core.md` for existing service inventory (details: `services/*.md`)*
+
+**Target Service(s)**:
+- [Which existing service(s) will implement this feature? e.g., ai-micro-api-admin, ai-micro-front-user]
+- [Or: Requires new service - justify why existing services insufficient]
+
+**Cross-Service Dependencies**:
+- **Authentication**: [How will this feature authenticate? JWT from auth service? Public endpoint?]
+- **Data Access**: [Which database(s)? authdb, apidb, admindb? Or new database?]
+- **API Calls**: [Does this call other services' APIs? Which endpoints?]
+- **Shared State**: [Any Redis caching/sessions required?]
+
+**Integration Points**:
+- [List specific APIs this feature exposes or consumes]
+- [Example: "Exposes POST /api/documents/analyze, consumes GET /api/users/{id} from User API"]
+
+**Backward Compatibility**:
+- [Will this change existing APIs? If yes, migration strategy?]
+- [Impact on existing frontend/backend integrations?]
+
 ---
 
 ## Review & Acceptance Checklist

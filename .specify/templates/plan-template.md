@@ -49,6 +49,29 @@
 
 [Gates determined based on constitution file]
 
+### Microservices Integration Check
+*For microservices projects only - refer to `.specify/memory/project-context-core.md` (details: `services/*.md`)*
+
+**Service Scope**:
+- [ ] Identified which existing service(s) this feature integrates with
+- [ ] If new service needed, documented justification
+- [ ] Service boundaries remain clear and well-defined
+
+**API Contracts**:
+- [ ] Defined API contracts at service boundaries
+- [ ] Contract tests planned for all cross-service calls
+- [ ] Authentication/authorization approach documented (JWT validation)
+
+**Data Flow**:
+- [ ] Database assignments clear (which service owns which data)
+- [ ] No cross-database joins or foreign keys
+- [ ] Shared state via Redis documented if applicable
+
+**Impact Assessment**:
+- [ ] Backward compatibility with existing APIs maintained
+- [ ] No breaking changes to shared contracts without migration plan
+- [ ] Performance impact on other services considered
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -216,4 +239,4 @@ directories captured above]
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.2.0 - See `/memory/constitution.md`*
