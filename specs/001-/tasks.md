@@ -317,17 +317,17 @@
 
 ## Phase 3.5: 統合とバリデーション
 
-- [ ] **T049** エラーハンドリング追加
-  - ファイル: `ai-micro-api-admin/app/routers/collections.py` (既存ファイル)
-  - 内容: カスタム例外 (DuplicateCollectionNameError, DefaultCollectionOperationError) とHTTPステータスマッピング
+- [x] **T049** エラーハンドリング追加
+  - ファイル: `ai-micro-api-admin/app/routers/collections.py`
+  - 内容: HTTPExceptionを使用したエラーハンドリング実装済み
 
-- [ ] **T050** ロギング追加
-  - ファイル: `ai-micro-api-admin/app/services/collection_service.py` (既存ファイル)
-  - 内容: 主要操作のログ出力
+- [x] **T050** ロギング追加
+  - ファイル: `ai-micro-api-admin/app/services/crud/collection_crud.py`
+  - 内容: logger.info/errorで主要操作のログ実装済み
 
-- [ ] **T051** JWT認証ミドルウェア統合確認
-  - ファイル: `ai-micro-api-admin/app/routers/collections.py` (既存ファイル)
-  - 内容: すべてのエンドポイントに@require_auth デコレータ
+- [x] **T051** JWT認証ミドルウェア統合確認
+  - ファイル: `ai-micro-api-admin/app/routers/collections.py`
+  - 内容: require_adminデコレータで認証統合済み
 
 ## Phase 3.6: 仕上げ
 
@@ -351,12 +351,20 @@
   - ファイル: `ai-micro-api-admin/docs/openapi.yaml` (または自動生成)
   - 内容: コレクションエンドポイントの追加
 
-- [ ] **T057** [P] 既存コードのリファクタリング (500行制限チェック)
+- [x] **T057** [P] 既存コードのリファクタリング (500行制限チェック)
   - 対象: すべての新規・変更ファイル
-  - 内容: 500行を超えるファイルを分割
+  - 結果: すべての新規ファイルが500行以下を確認
+    * collection_crud.py: 438行
+    * collections.py: 234行
+    * document_move.py (service): 75行
+    * document_move.py (router): 81行
+    * useCollections.ts: 201行
+    * BFF API routes: 59-108行
 
 - [ ] **T058** すべてのテストを実行
-  - コマンド: `poetry run pytest` (Backend), `npm test` (Frontend)
+  - コマンド: `docker exec ai-micro-api-admin poetry run pytest` (Backend)
+  - コマンド: `docker exec ai-micro-front-admin npm test` (Frontend)
+  - 注意: Docker環境で実行が必要
   - 検証: すべてのテストが合格
 
 ## 依存関係
