@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS langchain_pg_collection (
 INSERT INTO langchain_pg_collection (name, cmetadata)
 VALUES (
     'admin_documents',
-    '{"description": "Admin document embeddings collection", "model": "nomic-embed-text"}'::jsonb
+    '{"description": "Admin document embeddings collection", "model": "embeddinggemma"}'::jsonb
 )
 ON CONFLICT (name) DO NOTHING;
 ```
@@ -461,7 +461,7 @@ ON CONFLICT (name) DO NOTHING;
 CREATE TABLE IF NOT EXISTS langchain_pg_embedding (
     uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     collection_id UUID REFERENCES langchain_pg_collection(uuid) ON DELETE CASCADE,
-    embedding vector(768), -- nomic-embed-text produces 768-dimensional embeddings
+    embedding vector(768), -- embeddinggemma produces 768-dimensional embeddings
     document TEXT NOT NULL,
     cmetadata JSONB DEFAULT '{}'::jsonb,
     custom_id VARCHAR(255),
@@ -482,7 +482,7 @@ CREATE INDEX IF NOT EXISTS langchain_pg_embedding_document_id_idx ON langchain_p
 |---------|---------|------|------|
 | `uuid` | UUID | PK | 埋め込みID |
 | `collection_id` | UUID | FK | 所属するコレクション |
-| `embedding` | VECTOR(768) | NULL許容 | **768次元ベクトル（nomic-embed-text）** |
+| `embedding` | VECTOR(768) | NULL許容 | **768次元ベクトル（embeddinggemma）** |
 | `document` | TEXT | NOT NULL | テキストチャンク |
 | `cmetadata` | JSONB | DEFAULT '{}' | メタデータ |
 | `custom_id` | VARCHAR(255) | NULL許容 | カスタムID |
@@ -576,7 +576,7 @@ ORDER BY idx_scan DESC;
 
 ### 埋め込みモデル
 
-**使用モデル**: nomic-embed-text
+**使用モデル**: embeddinggemma
 **次元数**: 768
 **特徴**: 高精度な英語・日本語対応
 

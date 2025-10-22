@@ -152,7 +152,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 **用途**:
 - RAG（Retrieval-Augmented Generation）システムの実装
 - ドキュメント埋め込みベクトルの保存と検索
-- nomic-embed-text モデル（768次元）との統合
+- embeddinggemma モデル（768次元）との統合
 
 **技術仕様**:
 ```sql

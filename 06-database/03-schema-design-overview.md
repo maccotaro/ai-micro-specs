@@ -585,7 +585,7 @@ CREATE INDEX idx_documents_tags ON documents USING gin(tags);
 ### ベクトル型（pgvector）
 
 ```sql
--- nomic-embed-text の768次元埋め込み
+-- embeddinggemma の768次元埋め込み
 embedding vector(768)
 ```
 

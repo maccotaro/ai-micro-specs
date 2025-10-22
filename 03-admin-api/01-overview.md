@@ -60,7 +60,7 @@ Admin API Service (`ai-micro-api-admin`) は、システム管理、ドキュメ
 
 4. **ナレッジベース管理**
    - ドキュメントコレクション管理
-   - ベクトル埋め込み生成（nomic-embed-text 768次元）
+   - ベクトル埋め込み生成（embeddinggemma 768次元）
    - pgvectorによる類似度検索
    - RAG（Retrieval Augmented Generation）対応
 
@@ -326,7 +326,7 @@ langchain-postgres = "*"
 #### POST /admin/knowledge-bases/{kb_id}/documents/{doc_id}/vectorize
 - **機能**: ドキュメントのベクトル化
 - **認証**: admin必須
-- **処理**: nomic-embed-text による768次元埋め込み生成
+- **処理**: embeddinggemma による768次元埋め込み生成
 
 ---
 

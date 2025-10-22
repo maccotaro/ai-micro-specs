@@ -406,7 +406,7 @@ CREATE TABLE IF NOT EXISTS langchain_pg_collection (
 CREATE TABLE IF NOT EXISTS langchain_pg_embedding (
     uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     collection_id UUID REFERENCES langchain_pg_collection(uuid) ON DELETE CASCADE,
-    embedding vector(768), -- nomic-embed-text: 768次元
+    embedding vector(768), -- embeddinggemma: 768次元
     document TEXT NOT NULL,
     cmetadata JSONB DEFAULT '{}'::jsonb,
     custom_id VARCHAR(255),
@@ -430,7 +430,7 @@ CREATE TABLE IF NOT EXISTS langchain_pg_embedding (
 **デフォルトコレクション**:
 ```sql
 INSERT INTO langchain_pg_collection (name, cmetadata)
-VALUES ('admin_documents', '{"description": "Admin document embeddings", "model": "nomic-embed-text"}'::jsonb);
+VALUES ('admin_documents', '{"description": "Admin document embeddings", "model": "embeddinggemma"}'::jsonb);
 ```
 
 ### langchain_pg_embedding
@@ -441,7 +441,7 @@ VALUES ('admin_documents', '{"description": "Admin document embeddings", "model"
 |-------|---|------|
 | `uuid` | UUID | プライマリキー |
 | `collection_id` | UUID | 所属コレクション（外部キー） |
-| `embedding` | vector(768) | **768次元ベクトル（nomic-embed-text）** |
+| `embedding` | vector(768) | **768次元ベクトル（embeddinggemma** |
 | `document` | TEXT | チャンクテキスト |
 | `cmetadata` | JSONB | チャンクメタデータ（ページ番号、要素ID等） |
 | `document_id` | UUID | 元ドキュメントID（外部キー） |
@@ -480,7 +480,7 @@ from langchain_postgres import PGVector
 from langchain_community.embeddings import NomicEmbeddings
 
 # ベクトルストア初期化
-embeddings = NomicEmbeddings(model="nomic-embed-text-v1.5")
+embeddings = NomicEmbeddings(model="embeddinggemma")
 vector_store = PGVector(
     connection_string="postgresql://postgres:password@localhost:5432/admindb",
     collection_name="admin_documents",
