@@ -558,8 +558,155 @@ interface APIError {
 
 ---
 
+## ドキュメント削除
+
+### DELETE /admin/documents/{document_id}
+
+ドキュメントとその関連データ（物理ファイル、ベクトルデータ、メタデータ）を完全に削除します。
+
+**認証**: JWT + 認証ユーザー (`get_current_user`)
+
+**パスパラメータ**:
+- `document_id`: UUID
+
+**権限要件**:
+- **Admin**: 全ドキュメント削除可能
+- **一般ユーザー**: 自分が所有するドキュメントのみ削除可能
+- **ナレッジベースドキュメント**: ナレッジベース所有者のみ削除可能
+
+#### レスポンス
+
+```json
+{
+  "message": "Document deleted successfully"
+}
+```
+
+#### カスケード削除フロー
+
+ドキュメント削除時、以下の順序で関連データを削除します:
+
+```
+1. 物理ファイル削除
+   - file_path のファイル削除
+   - エラー時: 警告ログ出力（処理続行）
+
+2. 処理ディレクトリ削除
+   - processing_path のディレクトリ削除（再帰）
+   - エラー時: 警告ログ出力（処理続行）
+
+3. ベクトルデータ削除
+   - langchain_pg_embedding テーブルから削除
+   - vector_manager.delete_document_vectors(document_id)
+   - エラー時: 警告ログ出力（処理続行）
+
+4. ナレッジベースカウンター更新
+   - knowledge_base.document_count -= 1
+   - knowledge_base.storage_size -= document.file_size
+
+5. DBレコード削除
+   - documents テーブルから削除
+   - DB制約により関連レコードもカスケード削除:
+     * langchain_pg_embedding (ON DELETE CASCADE)
+     * document_fulltext (ON DELETE CASCADE)
+     * chat_messages (間接的: セッション経由)
+```
+
+#### エラーハンドリング
+
+**ファイル削除失敗時の挙動**:
+- 警告ログを出力
+- 処理は続行し、DBレコードは削除
+- データ整合性を優先（孤立ファイルより孤立DBレコードの方が問題）
+
+**権限エラー**:
+```json
+{
+  "detail": "You don't have permission to delete this document"
+}
+```
+
+**ドキュメント未発見**:
+```json
+{
+  "detail": "Document not found"
+}
+```
+
+#### 使用例
+
+```typescript
+// TypeScript
+async function deleteDocument(documentId: string) {
+  try {
+    const response = await fetch(`/api/admin/documents/${documentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail);
+    }
+
+    const result = await response.json();
+    console.log(result.message); // "Document deleted successfully"
+  } catch (error) {
+    console.error('Delete failed:', error.message);
+  }
+}
+```
+
+```bash
+# cURL
+curl -X DELETE "http://localhost:8003/admin/documents/${DOC_ID}" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}"
+```
+
+#### アクセス制御
+
+削除操作は`check_document_access()`関数で権限チェックを実施:
+
+**管理者（Admin）**:
+- 全ドキュメント削除可能
+- 所有者に関係なくアクセス可
+
+**ナレッジベースドキュメント**:
+- ナレッジベース所有者のみ削除可能
+- `knowledge_base.user_id == current_user.id`
+
+**スタンドアロンドキュメント**:
+- ドキュメント所有者のみ削除可能
+- `document.user_id == current_user.id`
+
+#### 削除後の影響
+
+**ナレッジベース統計**:
+- `document_count`: 自動的に-1減少
+- `storage_size`: ドキュメントのファイルサイズ分減少
+
+**ベクトル検索**:
+- 削除されたドキュメントのチャンクは検索結果に表示されなくなる
+- ベクトルインデックスは自動的に更新
+
+**チャット履歴**:
+- チャットメッセージのメタデータ（`sources`）に削除されたドキュメントIDが残る可能性
+- エラーにはならないが、参照先が存在しない状態
+
+#### 注意事項
+
+- **復元不可**: 削除は取り消しできません
+- **ベクトルデータ**: 物理ファイル削除失敗時もベクトルデータは削除されます
+- **バックアップ推奨**: 重要なドキュメント削除前はバックアップを取得してください
+- **監査ログ**: 削除操作は`rag_audit_logs`テーブルに記録されます
+
+---
+
 ## 関連ドキュメント
 
+- [ドキュメントメンテナンス・移動API](./10-api-document-maintenance.md) - 孤立ドキュメント管理、Collection間移動
 - [ドキュメント処理パイプライン](./03-document-processing.md)
 - [OCR設計](./04-ocr-design.md)
 - [階層構造変換](./05-hierarchy-converter.md)

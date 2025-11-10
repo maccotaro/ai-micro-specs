@@ -690,6 +690,9 @@ VACUUM ANALYZE langchain_pg_embedding;
 - [apidb スキーマ](./05-apidb-schema.md)
 - [データベース間連携](./08-cross-database-relations.md)
 - [Admin API Service 概要](/03-admin-api/01-overview.md)
+- [エンタープライズRAGシステム](../17-rag-system/README.md) - マルチテナント対応、Atlas層、ハイブリッド検索
+- [RAGデータベーススキーマ](../17-rag-system/diagrams/database-schema.md) - 統合ER図（Atlas層・Sparse層・Dense層）
+- [RAG更新トリガーフロー](../17-rag-system/diagrams/update-triggers.md) - KB要約・Collection要約の更新タイミング
 
 ---
 

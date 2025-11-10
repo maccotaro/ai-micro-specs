@@ -2,7 +2,7 @@
 
 **カテゴリ**: Database Design
 **バージョン**: 1.0.0
-**最終更新**: 2025-09-30
+**最終更新**: 2025-11-08
 
 ## 目次
 - [概要](#概要)
@@ -35,10 +35,18 @@ Admin API Serviceは、**PostgreSQL 15 + pgvector拡張**を使用して、シ�
 | `system_logs` | システムログ管理 | service_name, level, message |
 | `login_logs` | ログイン履歴 | user_id, ip_address, success |
 | `system_settings` | システム設定 | key, value (JSON) |
-| `documents` | ドキュメント管理 | filename, processing_metadata (JSONB) |
-| `knowledge_bases` | ナレッジベース | name, document_count, storage_size |
+| `tenants` | テナント管理 | name, display_name, is_active, settings |
+| `documents` | ドキュメント管理 | filename, processing_metadata (JSONB), tenant_id |
+| `knowledge_bases` | ナレッジベース | name, document_count, storage_size, tenant_id |
+| `collections` | コレクション | name, knowledge_base_id, is_default |
 | `langchain_pg_collection` | ベクトルコレクション | name, cmetadata (JSONB) |
-| `langchain_pg_embedding` | ベクトル埋め込み | embedding (vector), document_id |
+| `langchain_pg_embedding` | ベクトル埋め込み | embedding (vector 1024), document_id |
+| `knowledge_bases_summary_embedding` | KB要約ベクトル（Atlas層） | summary_text, summary_embedding (vector 1024) |
+| `collections_summary_embedding` | Collection要約ベクトル（Atlas層） | summary_text, summary_embedding (vector 1024) |
+| `document_fulltext` | 全文検索（スパース層） | content, term_frequency, bm25_score_cache |
+| `chat_sessions` | チャットセッション | title, is_favorite, message_count |
+| `chat_messages` | チャットメッセージ | role, content, metadata (JSONB) |
+| `rag_audit_logs` | RAG監査ログ | event_type, user_id, execution_time_ms |
 | `prompt_templates` | プロンプトテンプレート | name, template_content |
 
 ---
@@ -406,7 +414,7 @@ CREATE TABLE IF NOT EXISTS langchain_pg_collection (
 CREATE TABLE IF NOT EXISTS langchain_pg_embedding (
     uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     collection_id UUID REFERENCES langchain_pg_collection(uuid) ON DELETE CASCADE,
-    embedding vector(768), -- embeddinggemma: 768次元
+    embedding vector(1024), -- bge-m3:567m: 1024次元
     document TEXT NOT NULL,
     cmetadata JSONB DEFAULT '{}'::jsonb,
     custom_id VARCHAR(255),
@@ -430,7 +438,7 @@ CREATE TABLE IF NOT EXISTS langchain_pg_embedding (
 **デフォルトコレクション**:
 ```sql
 INSERT INTO langchain_pg_collection (name, cmetadata)
-VALUES ('admin_documents', '{"description": "Admin document embeddings", "model": "embeddinggemma"}'::jsonb);
+VALUES ('admin_documents', '{"description": "Admin document embeddings", "model": "bge-m3:567m"}'::jsonb);
 ```
 
 ### langchain_pg_embedding
@@ -441,7 +449,7 @@ VALUES ('admin_documents', '{"description": "Admin document embeddings", "model"
 |-------|---|------|
 | `uuid` | UUID | プライマリキー |
 | `collection_id` | UUID | 所属コレクション（外部キー） |
-| `embedding` | vector(768) | **768次元ベクトル（embeddinggemma** |
+| `embedding` | vector(1024) | **1024次元ベクトル（bge-m3:567m）** |
 | `document` | TEXT | チャンクテキスト |
 | `cmetadata` | JSONB | チャンクメタデータ（ページ番号、要素ID等） |
 | `document_id` | UUID | 元ドキュメントID（外部キー） |
@@ -477,10 +485,13 @@ LIMIT 5;
 **Python使用例**:
 ```python
 from langchain_postgres import PGVector
-from langchain_community.embeddings import NomicEmbeddings
+from langchain_ollama import OllamaEmbeddings
 
 # ベクトルストア初期化
-embeddings = NomicEmbeddings(model="embeddinggemma")
+embeddings = OllamaEmbeddings(
+    model="bge-m3:567m",
+    base_url="http://localhost:11434"
+)
 vector_store = PGVector(
     connection_string="postgresql://postgres:password@localhost:5432/admindb",
     collection_name="admin_documents",
@@ -668,10 +679,264 @@ SELECT * FROM documents WHERE original_metadata @> '{"total_pages": 15}'::jsonb;
 
 ---
 
+## エンタープライズRAG関連テーブル
+
+### tenants
+
+**用途**: マルチテナント対応のテナント管理
+
+**ファイル**: `app/models/tenant.py`
+
+```python
+class Tenant(Base):
+    __tablename__ = "tenants"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+    display_name = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    settings = Column(JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+```
+
+**主要カラム**:
+| カラム | 型 | 説明 |
+|-------|---|------|
+| `id` | UUID | テナントID |
+| `name` | VARCHAR(255) | テナント識別子（英数字_のみ、ユニーク） |
+| `display_name` | VARCHAR(255) | 表示名 |
+| `is_active` | BOOLEAN | アクティブ状態 |
+| `settings` | JSONB | 設定（max_storage_gb、max_users等） |
+
+**インデックス**:
+```sql
+CREATE INDEX idx_tenants_active ON tenants(is_active) WHERE is_active = TRUE;
+CREATE INDEX idx_tenants_name ON tenants(name);
+CREATE INDEX idx_tenants_settings_gin ON tenants USING GIN (settings);
+```
+
+---
+
+### knowledge_bases_summary_embedding (Atlas層)
+
+**用途**: ナレッジベース要約ベクトルによる事前フィルタリング
+
+**ファイル**: `app/models/atlas.py`
+
+```python
+class KnowledgeBaseSummaryEmbedding(Base):
+    __tablename__ = "knowledge_bases_summary_embedding"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    knowledge_base_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    summary_text = Column(Text, nullable=True)
+    summary_embedding = Column(Vector(1024), nullable=True)  # bge-m3:567m
+    version = Column(Integer, nullable=False, default=1)
+    is_active = Column(Boolean, default=True, nullable=False)
+    total_documents = Column(Integer, default=0)
+    total_chunks = Column(Integer, default=0)
+    avg_document_length = Column(Float, default=0.0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+```
+
+**主要カラム**:
+| カラム | 型 | 説明 |
+|-------|---|------|
+| `knowledge_base_id` | UUID | KB外部キー（ユニーク） |
+| `summary_text` | TEXT | KB要約テキスト（LLM生成） |
+| `summary_embedding` | vector(1024) | 要約ベクトル（bge-m3） |
+| `version` | INTEGER | バージョン番号 |
+| `is_active` | BOOLEAN | 有効フラグ（非アクティブ時は再生成対象） |
+
+**インデックス**:
+```sql
+CREATE INDEX idx_kb_summary_emb_ivfflat ON knowledge_bases_summary_embedding
+USING ivfflat (summary_embedding vector_cosine_ops) WITH (lists = 10);
+
+CREATE INDEX idx_kb_summary_emb_hnsw ON knowledge_bases_summary_embedding
+USING hnsw (summary_embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+```
+
+---
+
+### collections_summary_embedding (Atlas層)
+
+**用途**: コレクション要約ベクトルによる事前フィルタリング
+
+**ファイル**: `app/models/atlas.py`
+
+```python
+class CollectionSummaryEmbedding(Base):
+    __tablename__ = "collections_summary_embedding"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    collection_id = Column(UUID(as_uuid=True), ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    summary_text = Column(Text, nullable=True)
+    summary_embedding = Column(Vector(1024), nullable=True)  # bge-m3:567m
+    version = Column(Integer, nullable=False, default=1)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+```
+
+---
+
+### document_fulltext (スパース層)
+
+**用途**: PGroonga全文検索とBM25スコアリング
+
+```sql
+CREATE TABLE document_fulltext (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    content_pgroonga TEXT,  -- PGroonga全文検索用
+    term_frequency JSONB DEFAULT '{}'::jsonb,
+    bm25_score_cache FLOAT DEFAULT 0.0,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    knowledge_base_id UUID REFERENCES knowledge_bases(id) ON DELETE CASCADE,
+    collection_id UUID REFERENCES collections(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+**主要カラム**:
+| カラム | 型 | 説明 |
+|-------|---|------|
+| `document_id` | UUID | ドキュメント外部キー |
+| `chunk_index` | INTEGER | チャンク番号 |
+| `content` | TEXT | チャンクテキスト |
+| `content_pgroonga` | TEXT | PGroonga検索用（TokenMecab対応） |
+| `term_frequency` | JSONB | BM25計算用タームフリークエンシー |
+| `bm25_score_cache` | FLOAT | BM25スコアキャッシュ |
+
+**インデックス**:
+```sql
+-- PGroonga全文検索インデックス（日本語形態素解析）
+CREATE INDEX idx_document_fulltext_pgroonga ON document_fulltext
+USING pgroonga (content_pgroonga);
+
+-- PostgreSQL標準FTS（PGroongaフォールバック）
+ALTER TABLE langchain_pg_embedding ADD COLUMN document_tsv tsvector;
+CREATE INDEX idx_langchain_emb_document_tsv ON langchain_pg_embedding USING GIN (document_tsv);
+```
+
+---
+
+### chat_sessions
+
+**用途**: チャットセッション管理
+
+**ファイル**: `app/models/chat.py`
+
+```python
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    knowledge_base_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    title = Column(String(50), nullable=False)
+    is_favorite = Column(Boolean, default=False, nullable=False)
+    message_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+```
+
+**主要カラム**:
+| カラム | 型 | 説明 |
+|-------|---|------|
+| `knowledge_base_id` | UUID | KB外部キー |
+| `user_id` | UUID | ユーザーID |
+| `title` | VARCHAR(50) | セッションタイトル（自動生成） |
+| `is_favorite` | BOOLEAN | お気に入りフラグ |
+| `message_count` | INTEGER | メッセージ数（トリガーで自動更新） |
+
+**インデックス**:
+```sql
+CREATE INDEX idx_chat_sessions_kb_user ON chat_sessions(knowledge_base_id, user_id);
+CREATE INDEX idx_chat_sessions_user ON chat_sessions(user_id);
+```
+
+---
+
+### chat_messages
+
+**用途**: チャットメッセージ保存
+
+**ファイル**: `app/models/chat.py`
+
+```python
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # 'user' or 'assistant'
+    content = Column(Text, nullable=False)
+    metadata = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+```
+
+**メタデータ構造**:
+```json
+{
+  "sources": [
+    {
+      "chunk_id": "chunk-uuid",
+      "document_id": "doc-uuid",
+      "score": 0.92
+    }
+  ],
+  "tool_used": "search_documents",
+  "execution_time_ms": 2500
+}
+```
+
+---
+
+### rag_audit_logs
+
+**用途**: RAG操作の監査ログ
+
+```sql
+CREATE TABLE rag_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type VARCHAR(50) NOT NULL,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE RESTRICT,
+    user_id UUID,
+    knowledge_base_id UUID REFERENCES knowledge_bases(id) ON DELETE CASCADE,
+    query TEXT,
+    execution_time_ms INTEGER,
+    result_count INTEGER,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+**イベントタイプ**:
+- `search_executed`: 検索実行
+- `chat_session_created`: チャットセッション作成
+- `kb_summary_regenerated`: KB要約再生成
+- `cross_tenant_access`: クロステナントアクセス
+
+---
+
 ## 関連ドキュメント
 
 - [サービス概要](./01-overview.md)
 - [API仕様](./02-api-specification.md)
+- [ナレッジベースAPI](./02-api-knowledge-bases.md) - MCPチャット統合
+- [チャット履歴管理API](./07-api-chat-sessions.md)
+- [ハイブリッド検索API](./08-api-hybrid-search.md)
+- [テナント管理API](./09-api-tenants.md)
 - [ドキュメント処理パイプライン](./03-document-processing.md)
 - [OCR設計](./04-ocr-design.md)
 - [階層構造変換](./05-hierarchy-converter.md)
+- [エンタープライズRAGシステム](../17-rag-system/README.md) - Atlas層、スパース層、Dense層の詳細設計
+- [RAGデータベーススキーマ](../17-rag-system/diagrams/database-schema.md) - 統合ER図とインデックス戦略
+- [MCPサーバー](../04-mcp-server/README.md) - Model Context Protocol統合
