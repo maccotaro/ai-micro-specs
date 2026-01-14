@@ -80,5 +80,5 @@ excluded_tools: []
 # (contrary to the memories, which are loaded on demand).
 initial_prompt: ""
 
-project_name: "ai-micro-docs"
+project_name: "ai-micro-specs"
 included_optional_tools: []
